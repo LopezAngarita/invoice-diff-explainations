@@ -1,5 +1,4 @@
 import base64
-import json
 import os
 import re
 from pathlib import Path
@@ -69,14 +68,21 @@ def get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
-def extract_json_array(raw: str) -> list:
-    """Pull a JSON array out of a model response that may include fences or stray text."""
-    raw = re.sub(r"^```(?:json)?", "", raw.strip()).strip()
+def parse_markdown_table(raw: str) -> pd.DataFrame:
+    """Parse a markdown table (optionally fenced) into a DataFrame."""
+    raw = re.sub(r"^```(?:markdown)?", "", raw.strip()).strip()
     raw = re.sub(r"```$", "", raw).strip()
-    start, end = raw.find("["), raw.rfind("]")
-    if start == -1 or end == -1:
-        raise ValueError("No JSON array found in the model output.")
-    return json.loads(raw[start : end + 1])
+
+    lines = [l for l in raw.splitlines() if l.strip().startswith("|")]
+    if len(lines) < 2:
+        raise ValueError("No markdown table found in the model output.")
+
+    def split_row(line: str) -> list:
+        return [c.strip() for c in line.strip().strip("|").split("|")]
+
+    header = split_row(lines[0])
+    data_rows = [row for row in (split_row(l) for l in lines[2:] if l.strip()) if len(row) == len(header)]
+    return pd.DataFrame(data_rows, columns=header)
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -116,13 +122,13 @@ def find_differences(invoice_file, reference_file, contract_file) -> pd.DataFram
         st.stop()
 
     try:
-        rows = extract_json_array(raw)
-    except (ValueError, json.JSONDecodeError):
-        st.error("Could not parse the model's response as JSON. Raw response below:")
+        df = parse_markdown_table(raw)
+    except ValueError:
+        st.error("Could not parse the model's response as a markdown table. Raw response below:")
         st.code(raw)
         st.stop()
 
-    df = normalize_columns(pd.DataFrame(rows))
+    df = normalize_columns(df)
     missing = [c for c in COLUMNS if c not in df.columns]
     if missing:
         st.error(f"Model output is missing expected columns: {missing}")
