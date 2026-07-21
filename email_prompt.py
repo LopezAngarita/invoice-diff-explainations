@@ -36,7 +36,7 @@ La Quinta Inn & Suites Scottsdale	Fri, 7/17/26	IREO-SFSF12N
 
 Thank you!
 
-Best,
+Best regards,
 Leigh
 
 3 - Email for the supplier:
@@ -65,6 +65,17 @@ Thank you, and I wish you a pleasant day ahead.
  
 Best regards,
 Leigh
+
+Important:
+- If writting to the supplier you should always politely ask the supplier to review the 
+  invoice with an open question, like the examples above ("Could you review ...?") 
+- Emails to suppliers should start with: 
+  "Hello,
+  
+  I hope you are doing well."
+- All emails should end with:
+  "Best regards, 
+  Leigh"  
 
 Return only the email body, no subject line, no commentary.
 """
