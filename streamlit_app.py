@@ -169,8 +169,8 @@ def empty_table_markdown() -> str:
 
 if "explanations_df" not in st.session_state:
     st.session_state.explanations_df = pd.DataFrame(columns=COLUMNS)
-if "email_text" not in st.session_state:
-    st.session_state.email_text = ""
+if "email_output" not in st.session_state:
+    st.session_state["email_output"] = ""
 
 st.title("AI Accountant - Smart Diff Checker")
 st.write(
@@ -212,8 +212,8 @@ if st.button("Generate Email"):
         st.warning("Run 'Find Differences' first.")
     else:
         with st.spinner("Drafting email..."):
-            st.session_state.email_text = generate_email(
+            st.session_state["email_output"] = generate_email(
                 st.session_state.explanations_df, instructions
             )
 
-st.text_area("Generated Email", value=st.session_state.email_text, height=250, key="email_output")
+st.text_area("Generated Email", height=250, key="email_output")
