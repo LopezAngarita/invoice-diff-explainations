@@ -7,6 +7,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 from openai import OpenAI
+from PIL import Image
+from streamlit_paste_button import paste_image_button as pbutton
 
 from diff_prompt import DIFF_PROMPT
 from email_prompt import EMAIL_PROMPT
@@ -46,19 +48,34 @@ MIME_TYPES = {
 st.set_page_config(page_title="AI Accountant - Smart Diff Checker", layout="wide")
 
 
-def file_to_content_block(uploaded_file) -> dict:
-    """Turn an uploaded PDF/PNG/JPG into an OpenAI multimodal content block."""
-    suffix = Path(uploaded_file.name).suffix.lower()
+def file_to_content_block(source) -> dict:
+    """Turn an uploaded PDF/PNG/JPG or a pasted PIL image into an OpenAI multimodal content block."""
+    if isinstance(source, Image.Image):
+        buf = io.BytesIO()
+        source.save(buf, format="PNG")
+        data = base64.b64encode(buf.getvalue()).decode("utf-8")
+        return {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{data}"}}
+
+    suffix = Path(source.name).suffix.lower()
     mime = MIME_TYPES[suffix]
-    data = base64.b64encode(uploaded_file.getvalue()).decode("utf-8")
+    data = base64.b64encode(source.getvalue()).decode("utf-8")
 
     if suffix == ".pdf":
         return {
             "type": "file",
-            "file": {"filename": uploaded_file.name, "file_data": f"data:{mime};base64,{data}"},
+            "file": {"filename": source.name, "file_data": f"data:{mime};base64,{data}"},
         }
 
     return {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{data}"}}
+
+
+def resolve_input(uploaded_file, paste_result):
+    """Prefer an uploaded file; fall back to a pasted image; else None."""
+    if uploaded_file is not None:
+        return uploaded_file
+    if paste_result.image_data is not None:
+        return paste_result.image_data
+    return None
 
 
 def get_client() -> OpenAI:
@@ -197,18 +214,63 @@ st.write(
     "differences observed."
 )
 
-st.header("Inputs")
-col1, col2, col3 = st.columns(3)
-with col1:
-    invoice_file = st.file_uploader("Invoice", type=["pdf", "png", "jpg", "jpeg"])
-with col2:
-    reference_file = st.file_uploader("Reference", type=["pdf", "png", "jpg", "jpeg"])
-with col3:
-    contract_file = st.file_uploader("Contract", type=["pdf", "png", "jpg", "jpeg"])
+if "input_version" not in st.session_state:
+    st.session_state.input_version = 0
 
-if st.button("Find Differences", type="primary"):
+st.header("Inputs")
+v = st.session_state.input_version
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.markdown("**Invoice**")
+    invoice_upload = st.file_uploader(
+        "Invoice",
+        type=["pdf", "png", "jpg", "jpeg"],
+        key=f"invoice_uploader_{v}",
+        label_visibility="collapsed",
+    )
+    invoice_paste = pbutton("📋 Paste from clipboard", key=f"invoice_paste_{v}")
+    invoice_file = resolve_input(invoice_upload, invoice_paste)
+    if invoice_paste.image_data is not None:
+        st.image(invoice_paste.image_data, caption="Pasted", width=120)
+
+with col2:
+    st.markdown("**Reference**")
+    reference_upload = st.file_uploader(
+        "Reference",
+        type=["pdf", "png", "jpg", "jpeg"],
+        key=f"reference_uploader_{v}",
+        label_visibility="collapsed",
+    )
+    reference_paste = pbutton("📋 Paste from clipboard", key=f"reference_paste_{v}")
+    reference_file = resolve_input(reference_upload, reference_paste)
+    if reference_paste.image_data is not None:
+        st.image(reference_paste.image_data, caption="Pasted", width=120)
+
+with col3:
+    st.markdown("**Contract**")
+    contract_upload = st.file_uploader(
+        "Contract",
+        type=["pdf", "png", "jpg", "jpeg"],
+        key=f"contract_uploader_{v}",
+        label_visibility="collapsed",
+    )
+    contract_paste = pbutton("📋 Paste from clipboard", key=f"contract_paste_{v}")
+    contract_file = resolve_input(contract_upload, contract_paste)
+    if contract_paste.image_data is not None:
+        st.image(contract_paste.image_data, caption="Pasted", width=120)
+
+run_col, reset_col = st.columns([1, 1])
+with run_col:
+    run_clicked = st.button("Find Differences", type="primary")
+with reset_col:
+    if st.button("Reset Inputs"):
+        st.session_state.input_version += 1
+        st.rerun()
+
+if run_clicked:
     if not (invoice_file and reference_file and contract_file):
-        st.warning("Please upload all three documents before running.")
+        st.warning("Please upload or paste all three documents before running.")
     else:
         with st.spinner("Comparing documents..."):
             st.session_state.explanations_df = find_differences(
