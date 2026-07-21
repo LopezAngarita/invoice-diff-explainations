@@ -4,7 +4,7 @@ these instructions:
 {instructions}
 
 Depending on the reason behind the discrepancies, your email might be directed to different people:
-- If the internal reference is the one to be corrected, address the email to "GoWestTours Hotel Operations".
+- If the internal reference is the one to be corrected, address the email to "Ate Tricia" (internal).
 - If the invoice is the one to be corrected, address the email to the supplier.
 
 Discrepancies found:
