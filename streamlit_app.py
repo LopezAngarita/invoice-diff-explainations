@@ -86,7 +86,7 @@ def find_differences(invoice_file, reference_file, contract_file) -> pd.DataFram
     #         "comments": "Comments",
     #         "severity": "Severity",
     #     }
-    )
+    # )
     return df[COLUMNS]
 
 
