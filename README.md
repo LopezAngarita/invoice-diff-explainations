@@ -1,17 +1,5 @@
 # AI Accountant - Smart Diff Checker
 
-## Overview
-
-AI Accountant is a smart document comparison tool designed to analyze invoice and accounting documents. It uses OpenAI's vision capabilities to identify differences between multiple versions of documents and generates detailed explanations of those differences. The app streamlines the reconciliation process by automatically comparing invoices, detecting discrepancies, and helping draft clarification emails based on identified variations.
-
-## Features
-
-- **Multi-document comparison**: Upload and compare up to three documents side-by-side
-- **AI-powered difference detection**: Uses OpenAI to intelligently identify and explain discrepancies
-- **Multimodal input support**: Handles PDFs, scanned documents, and photographs equally well
-- **Structured explanations**: Generates a detailed table of findings
-- **Email drafting**: Automatically creates professional emails to communicate discrepancies
-
 ## Setup
 
 ```bash
@@ -30,10 +18,13 @@ or in `.streamlit/secrets.toml`:
 OPENAI_API_KEY = "sk-..."
 ```
 
+The app is gated behind a shared secret. Set `USER_PWD` alongside `OPENAI_API_KEY` (env var
+or `secrets.toml`) — visitors must enter it to reach the app.
+
 ## Run
 
 ```bash
-uv run streamlit run app.py
+uv run streamlit run streamlit_app.py
 ```
 
 ## Notes
@@ -41,11 +32,13 @@ uv run streamlit run app.py
 - Supported upload formats: PDF, PNG, JPG/JPEG (including photos or screenshots of documents).
 - Files are sent directly to the model as multimodal input (no local text extraction), so
   scanned or photographed documents are handled the same way as native PDFs.
-- The "Find Differences" step sends the three documents to OpenAI and expects a JSON array
-  back, which is parsed into the Explanations table.
+- The "Find Differences" step sends the three documents to OpenAI and expects a markdown
+  table back matching the Explanations columns, which is parsed into the Explanations table.
 - The "Generate Email" step drafts an email from the current Explanations table and the
   instructions box.
-- `MODEL` in `app.py` defaults to `gpt-5.6` — update it if you'd rather use a different
-  OpenAI model.
+- `MODEL` in `streamlit_app.py` defaults to `gpt-5.6-terra` — a balanced choice for document
+  comparison. Bump to `gpt-5.6-sol` for denser or trickier documents where missed discrepancies
+  are costly; `gpt-5.6-luna` is cheaper but not recommended here, as it's tuned for high-volume/
+  classification tasks rather than careful multi-document reconciliation.
 - Dependencies are managed with `uv` (`pyproject.toml` + `uv.lock`). `exclude-newer` in
   `[tool.uv]` pins resolution to packages published on or before that date for reproducibility.

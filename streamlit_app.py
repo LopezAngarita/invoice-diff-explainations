@@ -1,4 +1,5 @@
 import base64
+import io
 import os
 import re
 from pathlib import Path
@@ -10,7 +11,7 @@ from openai import OpenAI
 from diff_prompt import DIFF_PROMPT
 from email_prompt import EMAIL_PROMPT
 
-MODEL = "gpt-5.6"
+MODEL = "gpt-5.6-terra"
 
 COLUMNS = [
     "Good / Service",
@@ -69,20 +70,19 @@ def get_client() -> OpenAI:
 
 
 def parse_markdown_table(raw: str) -> pd.DataFrame:
-    """Parse a markdown table (optionally fenced) into a DataFrame."""
+    """Parse a markdown table (optionally fenced, possibly with stray text around it)."""
     raw = re.sub(r"^```(?:markdown)?", "", raw.strip()).strip()
     raw = re.sub(r"```$", "", raw).strip()
 
-    lines = [l for l in raw.splitlines() if l.strip().startswith("|")]
-    if len(lines) < 2:
+    table_lines = [l for l in raw.splitlines() if l.strip().startswith("|")]
+    if len(table_lines) < 2:
         raise ValueError("No markdown table found in the model output.")
 
-    def split_row(line: str) -> list:
-        return [c.strip() for c in line.strip().strip("|").split("|")]
-
-    header = split_row(lines[0])
-    data_rows = [row for row in (split_row(l) for l in lines[2:] if l.strip()) if len(row) == len(header)]
-    return pd.DataFrame(data_rows, columns=header)
+    df = pd.read_csv(io.StringIO("\n".join(table_lines)), sep="|", skipinitialspace=True)
+    df = df.dropna(axis=1, how="all")
+    df = df.iloc[1:].reset_index(drop=True)  # drop the |---|---| separator row
+    df.columns = df.columns.str.strip()
+    return df.map(lambda x: x.strip() if isinstance(x, str) else x)
 
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -161,6 +161,22 @@ def generate_email(explanations_df: pd.DataFrame, instructions: str) -> str:
     return text
 
 
+def check_password() -> bool:
+    """Gate the app behind the shared secret in st.secrets['USER_PWD']."""
+    if st.session_state.get("authenticated"):
+        return True
+
+    st.title("AI Accountant - Smart Diff Checker")
+    secret = st.text_input("Secret", type="password", key="secret_input")
+    if st.button("Enter"):
+        if secret == st.secrets.get("USER_PWD"):
+            st.session_state["authenticated"] = True
+            st.rerun()
+        else:
+            st.error("Wrong secret.")
+    return False
+
+
 def empty_table_markdown() -> str:
     header = "| " + " | ".join(COLUMNS) + " |"
     divider = "|" + "|".join(["-" * (len(c) + 2) for c in COLUMNS]) + "|"
@@ -171,6 +187,9 @@ if "explanations_df" not in st.session_state:
     st.session_state.explanations_df = pd.DataFrame(columns=COLUMNS)
 if "email_output" not in st.session_state:
     st.session_state["email_output"] = ""
+
+if not check_password():
+    st.stop()
 
 st.title("AI Accountant - Smart Diff Checker")
 st.write(
