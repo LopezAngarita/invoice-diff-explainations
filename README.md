@@ -1,25 +1,51 @@
-# 🎈 Blank app template
+# AI Accountant - Smart Diff Checker
 
-A simple Streamlit app template for you to modify!
+## Overview
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+AI Accountant is a smart document comparison tool designed to analyze invoice and accounting documents. It uses OpenAI's vision capabilities to identify differences between multiple versions of documents and generates detailed explanations of those differences. The app streamlines the reconciliation process by automatically comparing invoices, detecting discrepancies, and helping draft clarification emails based on identified variations.
 
-### How to run it on your own machine
+## Features
 
-Prerequisite: install `uv` if you don't already have it.
+- **Multi-document comparison**: Upload and compare up to three documents side-by-side
+- **AI-powered difference detection**: Uses OpenAI to intelligently identify and explain discrepancies
+- **Multimodal input support**: Handles PDFs, scanned documents, and photographs equally well
+- **Structured explanations**: Generates a detailed table of findings
+- **Email drafting**: Automatically creates professional emails to communicate discrepancies
 
+## Setup
+
+```bash
+uv sync
 ```
-$ curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Set your OpenAI API key, either as an environment variable:
+
+```bash
+export OPENAI_API_KEY=sk-...
 ```
 
-1. Sync the dependencies
+or in `.streamlit/secrets.toml`:
 
-   ```
-   $ uv sync
-   ```
+```toml
+OPENAI_API_KEY = "sk-..."
+```
 
-2. Run the app
+## Run
 
-   ```
-   $ uv run streamlit run streamlit_app.py
-   ```
+```bash
+uv run streamlit run app.py
+```
+
+## Notes
+
+- Supported upload formats: PDF, PNG, JPG/JPEG (including photos or screenshots of documents).
+- Files are sent directly to the model as multimodal input (no local text extraction), so
+  scanned or photographed documents are handled the same way as native PDFs.
+- The "Find Differences" step sends the three documents to OpenAI and expects a JSON array
+  back, which is parsed into the Explanations table.
+- The "Generate Email" step drafts an email from the current Explanations table and the
+  instructions box.
+- `MODEL` in `app.py` defaults to `gpt-5.6` — update it if you'd rather use a different
+  OpenAI model.
+- Dependencies are managed with `uv` (`pyproject.toml` + `uv.lock`). `exclude-newer` in
+  `[tool.uv]` pins resolution to packages published on or before that date for reproducibility.
