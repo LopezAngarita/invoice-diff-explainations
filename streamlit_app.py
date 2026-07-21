@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import re
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,19 @@ COLUMNS = [
     "Comments",
     "Severity",
 ]
+
+# Maps normalized (lowercased, alnum-only) key variants -> the canonical column name,
+# so the app works whether DIFF_PROMPT asks the model for snake_case or Title Case keys.
+COLUMN_ALIASES = {
+    "goodservice": "Good / Service",
+    "good": "Good / Service",
+    "valueatinvoice": "Value at Invoice",
+    "valueatreference": "Value at Reference",
+    "difference": "Difference",
+    "rootcause": "Root Cause",
+    "comments": "Comments",
+    "severity": "Severity",
+}
 
 MIME_TYPES = {
     ".pdf": "application/pdf",
@@ -55,9 +69,26 @@ def get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
+def extract_json_array(raw: str) -> list:
+    """Pull a JSON array out of a model response that may include fences or stray text."""
+    raw = re.sub(r"^```(?:json)?", "", raw.strip()).strip()
+    raw = re.sub(r"```$", "", raw).strip()
+    start, end = raw.find("["), raw.rfind("]")
+    if start == -1 or end == -1:
+        raise ValueError("No JSON array found in the model output.")
+    return json.loads(raw[start : end + 1])
+
+
+def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    def norm(col: str) -> str:
+        key = re.sub(r"[^a-z0-9]", "", col.lower())
+        return COLUMN_ALIASES.get(key, col)
+
+    return df.rename(columns={c: norm(c) for c in df.columns})
+
+
 def find_differences(invoice_file, reference_file, contract_file) -> pd.DataFrame:
-    instructions = DIFF_PROMPT
-    content = [{"type": "text", "text": instructions}]
+    content = [{"type": "text", "text": DIFF_PROMPT}]
     for label, uploaded_file in (
         ("INVOICE:", invoice_file),
         ("REFERENCE:", reference_file),
@@ -70,36 +101,58 @@ def find_differences(invoice_file, reference_file, contract_file) -> pd.DataFram
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": content}],
+        max_completion_tokens=8000,
+        reasoning_effort="low",
     )
-    raw = response.choices[0].message.content.strip()
-    raw = raw.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-    rows = json.loads(raw)
+    choice = response.choices[0]
+    raw = (choice.message.content or "").strip()
 
-    df = pd.DataFrame(rows)
-    # df = df.rename(
-    #     columns={
-    #         "good_service": "Good / Service",
-    #         "value_at_invoice": "Value at Invoice",
-    #         "value_at_reference": "Value at Reference",
-    #         "difference": "Difference",
-    #         "root_cause": "Root Cause",
-    #         "comments": "Comments",
-    #         "severity": "Severity",
-    #     }
-    # )
+    if not raw:
+        st.error(
+            f"The model returned no visible content (finish_reason={choice.finish_reason!r}). "
+            "This usually means the reasoning budget used up max_completion_tokens before any "
+            "output was written — try raising max_completion_tokens."
+        )
+        st.stop()
+
+    try:
+        rows = extract_json_array(raw)
+    except (ValueError, json.JSONDecodeError):
+        st.error("Could not parse the model's response as JSON. Raw response below:")
+        st.code(raw)
+        st.stop()
+
+    df = normalize_columns(pd.DataFrame(rows))
+    missing = [c for c in COLUMNS if c not in df.columns]
+    if missing:
+        st.error(f"Model output is missing expected columns: {missing}")
+        st.code(raw)
+        st.stop()
+
     return df[COLUMNS]
 
 
 def generate_email(explanations_df: pd.DataFrame, instructions: str) -> str:
-    prompt = EMAIL_PROMPT.format(instructions=instructions, 
-    explanations=explanations_df.to_markdown(index=False))
+    prompt = EMAIL_PROMPT.format(
+        instructions=instructions, explanations=explanations_df.to_markdown(index=False)
+    )
 
     client = get_client()
     response = client.chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
+        max_completion_tokens=2000,
+        reasoning_effort="low",
     )
-    return response.choices[0].message.content.strip()
+    choice = response.choices[0]
+    text = (choice.message.content or "").strip()
+    if not text:
+        st.error(
+            f"The model returned no visible content (finish_reason={choice.finish_reason!r}). "
+            "Try raising max_completion_tokens."
+        )
+        st.stop()
+    return text
 
 
 def empty_table_markdown() -> str:
