@@ -1,16 +1,14 @@
-[project]
+[tool.poetry]
 name = "ai-accountant-diff-checker"
 version = "0.1.0"
 description = "AI Accountant - Smart Diff Checker: a Streamlit app for spotting invoice discrepancies"
-requires-python = ">=3.11"
-dependencies = [
-    "streamlit>=1.36",
-    "pandas>=2.0",
-    "tabulate>=0.9",
-    "openai>=1.50",
-    "streamlit-paste-button>=0.1.2",
-    "pillow>=10.0",
-]
+package-mode = false
 
-[tool.uv]
-exclude-newer = "2026-07-21T00:00:00Z"
+[tool.poetry.dependencies]
+python = ">=3.11"
+streamlit = ">=1.36"
+pandas = ">=2.0"
+tabulate = ">=0.9"
+openai = ">=1.50"
+streamlit-paste-button = ">=0.1.2"
+pillow = ">=10.0"
