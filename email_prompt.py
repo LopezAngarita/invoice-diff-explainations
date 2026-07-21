@@ -4,14 +4,14 @@ these instructions:
 {instructions}
 
 Depending on the reason behind the discrepancies, your email might be directed to different people:
-- If the internal reference is the one to be corrected, address the email to "Ate Tricia" (internal).
+- If the internal Breakdown is the one to be corrected, address the email to "Ate Tricia" (internal).
 - If the invoice is the one to be corrected, address the email to the supplier.
 
 Discrepancies found:
 {explanations}
 
 Email Examples:
-1 - Email for internal reference correction:
+1 - Email for internal Breakdown correction:
 Hello Ate Tricia,
 
 Could you update the rate for this group? It seems like the base used in Access does not match with the one in contract.
@@ -23,7 +23,7 @@ Thank you!
 Best regards,
 Leigh
 
-2 - Email for internal reference correction:
+2 - Email for internal Breakdown correction:
 Hello At Tricia,
 
 I hope all is well.

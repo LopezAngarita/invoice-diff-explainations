@@ -10,7 +10,7 @@ Your task is to identify ONLY the real billing discrepancies between the Client 
 
 Important:
 - All three documents were manually created by humans.
-- Errors may exist in BOTH the client invoice and the internal reference.
+- Errors may exist in BOTH the client invoice and the internal Breakdown.
 - The contract is the source of truth for determining whether a difference is expected.
 
 --------------------------------------------------
@@ -75,7 +75,7 @@ Common root causes include:
 • Wrong currency conversion
 • Human data entry error
 • Incorrect formula/calculation
-• Internal reference calculation error
+• Internal Breakdown calculation error
 • Invoice calculation error
 
 Look carefully for spreadsheet-like calculation mistakes.
